@@ -1,0 +1,36 @@
+# IDE
+.vscode/
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Log
+*.log
+
+# Node / Angular (sprintwcl)
+node_modules/
+.angular/
+coverage/
+dist/
+
+# Java / Spring (sprintbff)
+target/
+.swagger-codegen/
+
+# Java legacy (sprintj)
+build/
+out/
+classes/
+*.class
+
+# Secrets e configurazione locale
+.env
+.env.*
+*.pem
+.git-credentials
