@@ -34,3 +34,8 @@ classes/
 .env.*
 *.pem
 .git-credentials
+
+# Repository Sprint clonati separatamente (vedi scripts/clone-repos.sh)
+/sprintbff/
+/sprintwcl/
+/sprintj/

@@ -2,14 +2,14 @@
 name: sprint
 description: >-
   Guida lo sviluppo del progetto Sprint diviso in tre repository (sprintbff,
-  sprintwcl, sprintj) collegati come git submodule. Usa quando si lavora su
-  Sprint, si aggiungono API, si modifica il frontend Angular, si consulta il
-  legacy JSP, o si gestiscono i submodule.
+  sprintwcl, sprintj) clonati accanto al meta-repo sprint-ia. Usa quando si
+  lavora su Sprint, si aggiungono API, si modifica il frontend Angular, si
+  consulta il legacy JSP, o si gestisce il setup locale.
 ---
 
-# Sprint — monorepo a submodule
+# Sprint — meta-repo con repository separati
 
-Meta-repository che orchestra tre progetti GitLab CSI.
+Meta-repository che orchestra tre progetti GitLab CSI, clonati localmente con `./scripts/clone-repos.sh`.
 
 ## Struttura
 
@@ -21,11 +21,11 @@ sprint-ia/          # questo meta-repo (config, skill, script)
 └── sprintj/        # backend legacy JSP — SOLO LETTURA
 ```
 
-| Submodule | Stack | Repository | Modificabile |
-|-----------|-------|------------|--------------|
-| `sprintbff` | Spring Boot | `https://gitlab.csi.it/prodotti/sprint/sprintbff.git` | Sì |
-| `sprintwcl` | Angular | `https://gitlab.csi.it/prodotti/sprint/sprintwcl.git` | Sì |
-| `sprintj` | Java/JSP legacy | `https://gitlab.csi.it/prodotti/sprint/sprintj` | **Mai** |
+| Cartella    | Stack        | Repository | Modificabile |
+|-------------|--------------|------------|--------------|
+| `sprintbff` | Spring Boot  | `https://gitlab.csi.it/prodotti/sprint/sprintbff.git` | Sì |
+| `sprintwcl` | Angular      | `https://gitlab.csi.it/prodotti/sprint/sprintwcl.git` | Sì |
+| `sprintj`   | Java/JSP legacy | `https://gitlab.csi.it/prodotti/sprint/sprintj` | **Mai** |
 
 ## Regole operative
 
@@ -35,7 +35,6 @@ sprint-ia/          # questo meta-repo (config, skill, script)
 - **Contract-first:** definire prima `src/main/resources/static/api/openapi.yaml`, poi rigenerare backend e frontend. Vedi skill [sprint-api](../sprint-api/SKILL.md). Script unificato: `./scripts/regenerate-api.sh`.
 - **Schema DB:** migrations in `schema/migrations/`, mapping API→tabelle in `schema/api-tables.md`. Vedi skill [schema](../schema/SKILL.md).
 - Commit e push sul repository `sprintbff`, non sul meta-repo.
-- Dopo il push, aggiorna il puntatore submodule nel meta-repo se necessario.
 
 ### sprintwcl — nuovo frontend
 
@@ -60,34 +59,22 @@ Richiede accesso VPN/rete CSI e credenziali GitLab.
 ```bash
 # con Personal Access Token (consigliato, funziona anche da Cursor)
 export GITLAB_TOKEN=glpat-...
-./scripts/init-submodules.sh
+./scripts/clone-repos.sh
 
 # oppure clone interattivo dal terminale (chiede username/password)
-./scripts/init-submodules.sh
-```
-
-## Comandi submodule utili
-
-```bash
-# stato
-git submodule status
-
-# aggiorna sprintbff e sprintwcl all'ultimo commit remoto
-git submodule update --remote sprintbff sprintwcl
-
-# sprintj resta bloccato (update = none in .gitmodules)
+./scripts/clone-repos.sh
 ```
 
 ## Workflow commit
 
-1. Lavora nel submodule corretto (`sprintbff` o `sprintwcl`).
-2. Commit e push **nel repository del submodule**.
-3. Torna al meta-repo e, se serve, registra il nuovo SHA del submodule:
+1. Lavora nel repository corretto (`sprintbff` o `sprintwcl`).
+2. Commit e push **nel repository del progetto** (`git -C sprintbff ...` o aprendo quella cartella in Cursor).
 
 ```bash
-cd /path/to/sprint-ia
-git add sprintbff   # o sprintwcl
-git commit -m "chore: aggiorna sprintbff a <descrizione>"
+cd sprintwcl
+git add .
+git commit -m "feat: ..."
+git push
 ```
 
 ## Dove implementare cosa
@@ -104,7 +91,7 @@ git commit -m "chore: aggiorna sprintbff a <descrizione>"
 
 Prima di modificare codice:
 
-- [ ] Ho identificato il submodule corretto?
+- [ ] Ho identificato il repository corretto (`sprintbff` o `sprintwcl`)?
 - [ ] Sto evitando qualsiasi modifica in `sprintj/`?
 - [ ] Le nuove API vanno in `sprintbff`, non nel legacy?
 - [ ] Per nuove API ho seguito il workflow contract-first (skill `sprint-api`)?

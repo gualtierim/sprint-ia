@@ -155,9 +155,8 @@ Nei componenti di pagina (`sprintwcl`):
 
 1. Commit in `sprintbff` (contratto + impl/manager + eventuali VO generati)
 2. Commit in `sprintwcl` (servizi/modelli rigenerati + componenti)
-3. Aggiornare il puntatore submodule nel meta-repo se necessario
 
-Vedi anche la skill [sprint](../sprint/SKILL.md) per le regole sui submodule.
+Vedi anche la skill [sprint](../sprint/SKILL.md) per le regole sui repository.
 
 ## Cosa non fare
 
