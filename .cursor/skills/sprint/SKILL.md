@@ -15,6 +15,7 @@ Meta-repository che orchestra tre progetti GitLab CSI.
 
 ```
 sprint-ia/          # questo meta-repo (config, skill, script)
+├── schema/         # migrations SQL + mapping API→tabelle
 ├── sprintbff/      # backend Spring Boot — nuove API
 ├── sprintwcl/      # frontend Angular (ultima versione)
 └── sprintj/        # backend legacy JSP — SOLO LETTURA
@@ -31,12 +32,16 @@ sprint-ia/          # questo meta-repo (config, skill, script)
 ### sprintbff — nuove API
 
 - Tutte le nuove API REST vanno implementate qui (Spring Boot).
+- **Contract-first:** definire prima `src/main/resources/static/api/openapi.yaml`, poi rigenerare backend e frontend. Vedi skill [sprint-api](../sprint-api/SKILL.md). Script unificato: `./scripts/regenerate-api.sh`.
+- **Schema DB:** migrations in `schema/migrations/`, mapping API→tabelle in `schema/api-tables.md`. Vedi skill [schema](../schema/SKILL.md).
 - Commit e push sul repository `sprintbff`, non sul meta-repo.
 - Dopo il push, aggiorna il puntatore submodule nel meta-repo se necessario.
 
 ### sprintwcl — nuovo frontend
 
-- Frontend Angular con ultima versione del framework.
+- Frontend Angular 22 con ultima versione del framework.
+- **UI con Angular Material:** usare i componenti `@angular/material` (tabelle, form, dialog, snackbar, toolbar, ecc.) e il theming Material. Non introdurre librerie UI alternative.
+- **Evitare componenti custom:** non creare wrapper o componenti riutilizzabili “da zero” se esiste un equivalente Material (es. `mat-table`, `mat-form-field`, `mat-dialog`, `mat-button`). I componenti Angular servono solo per orchestrare pagine/feature (routing, chiamate API, binding dati), non per reinventare widget UI.
 - Consuma le API di `sprintbff`.
 - Commit e push sul repository `sprintwcl`.
 
@@ -102,4 +107,7 @@ Prima di modificare codice:
 - [ ] Ho identificato il submodule corretto?
 - [ ] Sto evitando qualsiasi modifica in `sprintj/`?
 - [ ] Le nuove API vanno in `sprintbff`, non nel legacy?
+- [ ] Per nuove API ho seguito il workflow contract-first (skill `sprint-api`)?
+- [ ] Se l'API tocca il DB: migration in `schema/migrations/` e riga in `schema/api-tables.md` (skill `schema`)?
 - [ ] Il frontend usa `sprintwcl` e punta alle API di `sprintbff`?
+- [ ] L'UI usa componenti Angular Material, senza componenti custom dove esiste un equivalente Material?
