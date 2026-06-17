@@ -5,6 +5,7 @@ Analisi delle pagine legacy e proposta API REST per la migrazione verso `sprintb
 | Documento | Pagina legacy | Stato |
 |-----------|---------------|-------|
 | [ricerca-do.md](./ricerca-do.md) | `ricerca.do` — motore di ricerca | Bozza |
+| [creazione-richiesta.md](./creazione-richiesta.md) | `nuovaRichiesta.do` + wizard folder 0–5 + allegati | Bozza |
 
 Ogni spec descrive:
 
