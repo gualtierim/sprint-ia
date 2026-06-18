@@ -25,7 +25,7 @@ Non creare file OpenAPI altrove. Non implementare endpoint a mano senza aver pri
 Task Progress:
 - [ ] 1. Definire/aggiornare openapi.yaml
 - [ ] 2. Rigenerare backend (interfacce API + VO)
-- [ ] 3. Implementare la logica in *ApiImpl e Manager (se DB: migration + `schema/api-tables.md`, skill `schema`)
+- [ ] 3. Implementare la logica in *ApiImpl e Manager (se DB: migration PostgreSQL + `schema/api-tables.md` + Lombok, skill `schema`). Query da `sprintj/.../sql.properties` via MyBatis; se non implementabile, `FunzionalitaNonImplementataException` — mai mock in-memory.
 - [ ] 4. Rigenerare frontend (servizi + modelli)
 - [ ] 5. Usare i servizi generati nei componenti Angular (UI con Angular Material, senza componenti custom)
 ```
@@ -49,6 +49,7 @@ Aprire `sprintbff/src/main/resources/static/api/openapi.yaml` e definire:
 | Risposta OK generica | `GenericResponse` |
 | Errori | `Errore` con `code`, `errorMessage`, `fields` |
 | Risposte standard | `400` → `Errore`, `403` → `Errore`, `default` → `Errore` |
+| **Paginazione liste/tabelle** | Request: `page` (da 1), `pageSize` (default 20). Response: oggetto paginato con `totale`, `pagina`, `totalePagine`, `items` — mai array illimitato per dati tabellari |
 
 **Esempio minimo di nuovo endpoint:**
 
@@ -150,6 +151,7 @@ Nei componenti di pagina (`sprintwcl`):
 - Comporre l'interfaccia con componenti **Angular Material** (`mat-table`, `mat-form-field`, `mat-select`, `mat-dialog`, `mat-paginator`, `mat-toolbar`, ecc.).
 - **Non** creare componenti UI custom (wrapper, input, tabelle, modali homemade) se Material offre già il widget adatto.
 - I componenti Angular restano sottili: iniettano i servizi generati da `src/app/api/`, gestiscono stato e navigazione; lo styling passa dal tema Material, non da CSS ad hoc su widget reinventati.
+- **Tabelle con paginazione backend:** per ogni `mat-table` di risultati usare `mat-paginator` (`[length]="totale"`, `[pageSize]="pageSize"`, `(page)="onPageChange($event)"`). Al cambio pagina reinviare la stessa richiesta API con `page` e `pageSize` aggiornati. Il contratto OpenAPI deve già prevedere i campi di paginazione in request/response.
 
 ### 6. Commit
 
@@ -160,19 +162,26 @@ Vedi anche la skill [sprint](../sprint/SKILL.md) per le regole sui repository.
 
 ## Cosa non fare
 
+- Non usare sintassi o API Java oltre **Java 17** nel codice di `sprintbff` (JDK 25 sì, `--release 17` in `pom.xml`)
 - Non aggiungere `@Path` o endpoint JAX-RS senza passare da `openapi.yaml`
 - Non creare DTO Java o interfacce TypeScript a mano se esistono nel contratto
 - Non modificare file generati (`*Api.java`, `vo/*.java`, servizi/modelli Angular generati)
 - Non usare `sprintj` come riferimento per nuove API REST
 - Non creare componenti UI custom al posto di Angular Material
+- Non paginare tabelle lato client: ogni lista tabellare passa da API paginata (`page`, `pageSize`, `totale`)
+- Non usare mock, stub in-memory o dati di esempio nel BFF: solo DB reale o `FunzionalitaNonImplementataException` / `ErroreGestitoException`
 
 ## Checklist agente
 
 Prima di proporre o implementare una nuova API:
 
+- [ ] Il codice Java in `*ApiImpl` / `*Manager` rispetta il vincolo Java 17 (niente feature post-17)?
 - [ ] Ho aggiornato `sprintbff/src/main/resources/static/api/openapi.yaml`?
 - [ ] Ho eseguito `mvn generate-sources` in `sprintbff`?
 - [ ] Ho creato/aggiornato `*ApiImpl` e `*Manager` senza toccare le interfacce generate?
+- [ ] Le conversioni Row/Entity → VO usano MapStruct (skill `backend`)?
 - [ ] Ho rigenerato con `./scripts/regenerate-api.sh` (o i singoli comandi backend/frontend)?
 - [ ] I path nel contratto sono coerenti con `/api/v1`?
 - [ ] La UI usa Angular Material, senza componenti custom ridondanti?
+- [ ] Gli endpoint che alimentano tabelle espongono paginazione backend (`page`, `pageSize`, totale in risposta)?
+- [ ] Nessun mock/stub in-memory nel Manager: query da legacy o eccezione parlante?

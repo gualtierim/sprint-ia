@@ -1,6 +1,6 @@
 # Migrations Sprint
 
-Script SQL versionati per lo schema Oracle condiviso.
+Script SQL versionati per lo schema PostgreSQL Sprint (`schema sprint`).
 
 ## Convenzione
 

@@ -1,0 +1,38 @@
+---
+description: Convenzioni HTTP nel frontend Angular sprintwcl
+globs: sprintwcl/**/*.ts
+alwaysApply: true
+---
+
+# HTTP nel frontend Sprint
+
+## Subscription e teardown
+
+Ogni chiamata HTTP sottoscritta in componenti o servizi con lifecycle deve usare `takeUntilDestroyed` per evitare memory leak e aggiornamenti dopo la distruzione del componente.
+
+```typescript
+import { DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+private readonly destroyRef = inject(DestroyRef);
+
+ngOnInit(): void {
+  this.apiService.getData()
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe({ next: (data) => this.data.set(data) });
+}
+```
+
+Regole:
+
+- Usare sempre `.pipe(takeUntilDestroyed(...))` prima di `.subscribe()` su Observable da servizi API.
+- In field initializer o `inject()` con contesto di injection attivo si può usare `takeUntilDestroyed()` senza argomenti.
+- In `ngOnInit`, callback o metodi successivi passare `this.destroyRef`.
+- Non usare `takeUntil(Subject)` manuali se `takeUntilDestroyed` è sufficiente.
+- Le chiamate convertite con `firstValueFrom` / `lastValueFrom` in async/await non richiedono `takeUntilDestroyed` (Promise singola).
+
+## Loading globale
+
+Lo spinner a pagina intera è gestito da `loadingInterceptor` in `src/app/core/loading/`. Non aggiungere spinner locali duplicati per le stesse richieste HTTP.
+
+Le chiamate autocomplete/suggest (`/suggest`) sono escluse dallo spinner globale. Per altre richieste in background usare `SKIP_GLOBAL_LOADING` nel `HttpContext`.

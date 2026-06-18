@@ -1,6 +1,13 @@
-# Ricerca (`ricerca.do`) — analisi entità e proposta API
+# Ricerca richieste ed eventi — analisi entità e proposta API
 
-Documento di analisi per la migrazione della pagina legacy **Ricerca** verso `sprintbff` + `sprintwcl`.
+Documento di analisi per la migrazione del motore di ricerca legacy (`ricerca.do`) verso **due pagine Angular** distinte in `sprintwcl`, con API di dominio condivise in `sprintbff`.
+
+| Pagina Angular (target) | Route suggerita | Sezione legacy | Submit legacy |
+|------------------------|-----------------|----------------|---------------|
+| **Ricerca richieste** | `/ricerca/richieste` | Ricerca veloce richiesta | `avviaRicercaVeloce.do` |
+| **Ricerca eventi** | `/ricerca/eventi` | Ricerca veloce eventi | `avviaRicercaVeloceEventi.do` |
+
+Il legacy espone un'unica JSP (`ricerca.jsp`) con due form sulla stessa schermata; in migrazione le due funzionalità sono **pagine separate** (menu, routing e init distinti), ma riusano le stesse API di dominio (`/leggi`, `/province`, …) dove applicabile.
 
 **Fonti legacy (sola lettura):**
 
@@ -14,43 +21,66 @@ Documento di analisi per la migrazione della pagina legacy **Ricerca** verso `sp
 
 ---
 
-## 1. Cosa fa `ricerca.do`
+## 1. Cosa fa `ricerca.do` (legacy) e come si mappa in sprintwcl
 
-`GET /ricerca.do` (parametro Struts `ricerca`) è il punto di ingresso del **motore di ricerca**:
+`GET /ricerca.do` (parametro Struts `ricerca`) è il punto di ingresso legacy del **motore di ricerca**:
 
 1. Pulisce la sessione di ricerca precedente.
 2. Carica i **filtri** (dropdown e liste) in base al profilo utente (`ruolo@dominio`).
-3. Renderizza `ricerca.jsp`.
+3. Renderizza `ricerca.jsp` con **due sezioni** sulla stessa pagina.
 
-Dalla pagina l'utente può avviare due ricerche attive:
+In `sprintwcl` ogni sezione diventa una **pagina autonoma**:
 
-| Sezione UI | Submit legacy | Tipo risultato |
-|------------|---------------|----------------|
-| Ricerca richiesta | `avviaRicercaVeloce.do` | Richieste (`tipoOggetto = R`) |
-| Ricerca eventi | `avviaRicercaVeloceEventi.do` | Eventi (`tipoOggetto = E`) |
+### Pagina Ricerca richieste (`/ricerca/richieste`)
 
-Sezioni **commentate** nel JSP (caricate in sessione ma non mostrate): ricerca predefinita, ricerca avanzata.
+- Form con tutti i filtri della sezione «Ricerca veloce richiesta» (provincia, comune, stato, legge, evento associato, date, compilatore, …).
+- Submit → `POST /richieste/cerca` (equivalente `avviaRicercaVeloce.do`).
+- Tabella risultati **paginata lato backend** (`page`, `pageSize` nel body; risposta `CercaRichiesteRisultatoPage`).
+
+### Pagina Ricerca eventi (`/ricerca/eventi`)
+
+- Form minimale: descrizione evento.
+- Submit → `POST /eventi/cerca` (equivalente `avviaRicercaVeloceEventi.do`).
+- Tabella risultati **paginata lato backend** (stesso contratto `CercaRisultatoPage` con `tipoOggetto = E`).
+
+### Fuori scope pagine attuali (legacy commentato)
+
+Ricerca predefinita e ricerca avanzata restano in fase 3 (`/motore-ricerca/*`); non fanno parte delle due pagine iniziali.
 
 ---
 
-## 2. Diagramma flusso (pagina + submit)
+## 2. Diagramma flusso (due pagine + submit)
 
 ```mermaid
 flowchart TD
-    A[GET ricerca.do] --> B[RicercaAction.ricerca]
-    B --> C[RicercaBean.ricerca]
-    C --> D[Carica filtri per profilo]
-    D --> E[ricerca.jsp]
+    subgraph legacy [Legacy — una JSP]
+        A[GET ricerca.do] --> B[RicercaAction.ricerca]
+        B --> C[RicercaBean.ricerca]
+        C --> D[Carica filtri per profilo]
+        D --> E[ricerca.jsp]
+        E --> F[avviaRicercaVeloce.do]
+        E --> G[avviaRicercaVeloceEventi.do]
+    end
 
-    E --> F[avviaRicercaVeloce.do]
-    E --> G[avviaRicercaVeloceEventi.do]
+    subgraph sprintwcl [sprintwcl — due pagine]
+        R1[GET /ricerca/richieste] --> I1[init lookup richieste]
+        R2[GET /ricerca/eventi] --> I2[init minimo eventi]
+        I1 --> P1[Form + tabella risultati]
+        I2 --> P2[Form + tabella risultati]
+        P1 --> API1[POST /richieste/cerca]
+        P2 --> API2[POST /eventi/cerca]
+    end
 
     F --> H[Query su VSDE_RIC_38_STRAO_PT_TUTTE]
     G --> I[Query su SPRINT_T_EVENTO + relazioni]
+    API1 --> H
+    API2 --> I
 
-    H --> J[risultatoRicerca.jsp]
+    H --> J[risultatoRicerca.jsp legacy]
     I --> J
 ```
+
+**Paginazione:** sia `POST /richieste/cerca` sia `POST /eventi/cerca` accettano `page` e `pageSize` e restituiscono `totale`, `pagina`, `totalePagine`, `items`. Il frontend **non** carica l'intero dataset in memoria: `mat-paginator` richiama l'API a ogni cambio pagina.
 
 ---
 
@@ -111,8 +141,81 @@ flowchart TD
 
 | Entità | Descrizione | Tabelle principali | API proposta |
 |--------|-------------|-------------------|--------------|
-| **Richiesta** (item risultato) | `ItemMotoreRicercaDTO`: id, codice, descrizione, stato, comune, geometria | `VSDE_RIC_38_STRAO_PT_TUTTE` → `SPRINT_T_RIC_GENERICA`, `SPRINT_T_RIC_38_CALAMITA`, `SPRINT_R_RIC_GENERICA_COMUNE`, … | `POST /richieste/cerca` |
-| **Evento** (item risultato) | id, codEvento, descrizione, comuni, aree idro, date | `SPRINT_T_EVENTO` + relazioni | `POST /eventi/cerca` |
+| **Richiesta** (item risultato) | Tabella JSP dinamica — vedi **§3.6** (30 colonne configurate in DB, 29 header visibili) | `VSDE_RIC_38_STRAO_PT_TUTTE` → `SPRINT_T_RIC_GENERICA`, `SPRINT_T_RIC_38_CALAMITA`, `SPRINT_R_RIC_GENERICA_COMUNE`, … | `POST /richieste/cerca` → `CercaRichiestaItemRisultato` |
+| **Evento** (item risultato) | id, codEvento, descrizione, comuni, aree idro, date | `SPRINT_T_EVENTO` + relazioni | `POST /eventi/cerca` → `CercaItemRisultato` |
+
+---
+
+### 3.6 Tabella risultati JSP — ricerca veloce richieste
+
+**JSP:** `sprintj/src/web/sprintj/jsp/ricerca/risultatoRicerca.jsp`  
+**Submit:** `avviaRicercaVeloce.do` → forward `success` → stessa JSP per tutte le tipologie di ricerca.
+
+#### Rendering JSP
+
+| Elemento | Comportamento |
+|----------|---------------|
+| Tabella | `id="tabellaRisultatoRicerca"`, scroll orizzontale (`div.scroll.auto_orizz`) |
+| Intestazioni | Iterate da `form.campiRicercaList` (session); testo = `descrizione`; escluse colonne con `flgPk=true` o `decorator='X'` |
+| Colonna selezione | Checkbox `html:multibox property="index"` sulla colonna con `flgPk=true` (PK, header non visibile) |
+| Celle | Formato per `decorator`: `S`/`L`/`SK` testo; `C` valuta `#,##0.00`; `D` data `dd/MM/yyyy`; `TC`/`TP` testo (comune/provincia risolti via LOTO in `compilaToponomastica`) |
+| Paginazione | Sopra e sotto; per la veloce richieste usa `skipRicercaVeloce.do` (`defineVariable.jsp`) |
+| Azioni | `pulsantiRicerca.jsp`: seleziona/deseleziona, visualizza dettaglio, mappa (solo se non `ricercaVeloceEventi`) |
+
+#### Origine configurazione colonne
+
+Metodo legacy: `RicercaDAOImpl.findCampoMtdRisRicercaVeloce()`  
+Legge **3 righe** da `SPRINT_D_RICHIESTA_GENERICA` (valori comma-separated):
+
+| `NOME_COLONNA` | Uso |
+|----------------|-----|
+| `FK_DESCR_CAMPO_RIS_RICERCA` | Etichetta header JSP |
+| `FK_CAMPO_RIS_RICERCA` | Nome colonna SQL |
+| `FK_DECORATOR` | Formato cella |
+
+Per ogni indice `i`: `tabella = VSDE_RIC_38_STRAO_PT_TUTTE`, `flgPk = true` solo per `i == 0`.  
+Query risultati: `RicercaUtil.buildSQLRicercaPredefinita()` + filtri da `RicercaAction.avviaRicercaVeloce()`.
+
+#### Elenco colonne (DB PGSITTST)
+
+| # | Header JSP | Campo SQL (`VSDE_RIC_38_STRAO_PT_TUTTE`) | Decorator | Note |
+|---|------------|------------------------------------------|-----------|------|
+| 0 | Chiave | `ID_RICHIESTA_GENERICA` | S | Solo checkbox (`flgPk`); header non visibile |
+| 1 | Id richiesta | `COD_RICHIESTA` | S | |
+| 2 | Legge | `FK_LEGGE` | L | Nome legge via `compilaLegge` |
+| 3 | Stato | `STATO` | S | |
+| 4 | Ente richiedente | `AGGREGAZIONI` | S | |
+| 5 | Provincia | `ISTAT_PROVINCIA` | TP | Nome provincia via LOTO |
+| 6 | Comune | `FK_TOPE_COMUNE` | TC | Nome comune via LOTO |
+| 7 | Ordinanza-Provvedimento | `N_ORDINANZA_SINDACALE` | S | |
+| 8 | Oggetto | `DESCRIZIONE_DANNO` | S | |
+| 9 | Descrizione intervento | `DESCRIZIONE_INTERVENTO` | S | |
+| 10 | Importo Somma Urgenza | `IMPORTO_SOMMA_URGENZA` | C | Valuta |
+| 11 | Importo urgente | `IMPORTO_URGENTE` | C | Valuta |
+| 12 | Importo definitivo | `IMPORTO_DEFINITIVO` | C | Valuta |
+| 13 | Codice CUP | `CODICE_CUP` | S | |
+| 14 | Coordinata X | `CO_X` | S | |
+| 15 | Coordinata Y | `CO_Y` | S | |
+| 16 | Data inserimento | `DATA_INSERIMENTO` | D | |
+| 17 | Data ultima modifica | `MOD_DATA` | D | |
+| 18 | Compilatore | `COGNOME_COMPILATORE` | S | |
+| 19 | Classe_rischio | `CLASSE_RISCHIO` | S | |
+| 20 | Descrizione_evento | `DESCRIZIONE` | S | Descrizione evento associato (colonna vista) |
+| 21 | Note_aggiuntive_danno | `NOTE` | S | |
+| 22 | Categoria_danno | `CODICE` | S | |
+| 23 | Sottocategoria_danno | `SOTTOCATEGORIA` | S | |
+| 24 | Descrizione_dissesto | `DESCRIZIONE_DISSESTO` | S | |
+| 25 | Dissesto_PAI | `DISSESTO_SENSO_PAI` | S | SI/NO (CASE in vista) |
+| 26 | Tipo_dissesto | `DESCRIZIONE_TIPO_DISSESTO` | S | |
+| 27 | Località | `LOCALITA` | S | |
+| 28 | Provv. Finanziamento | `PROVVEDIMENTO_FINANZIAMENTO` | S | |
+| 29 | Rich. Georiferita | `GEORIFERITO` | S | SI/NO (CASE in vista) |
+
+**Header visibili:** 29 (tutte tranne «Chiave», che è solo checkbox).
+
+#### Mapping API (`CercaRichiestaItemRisultato`)
+
+Lo schema OpenAPI in `openapi.yaml` espone gli stessi campi in camelCase. I decorator `L`, `TC`, `TP` corrispondono a valori già risolti lato BFF (`nomeLegge`, `descrizioneProvincia`, `descrizioneComune`).
 
 ---
 
@@ -129,9 +232,19 @@ Le API sono organizzate per **risorsa di dominio**, non per pagina. Così gli st
 | **Dominio** | nessuno (risorsa radice) | `/leggi`, `/province`, `/richieste/stati` | Lookup e CRUD riusabili ovunque |
 | **Azione su risorsa** | sotto-risorsa della entità | `POST /richieste/cerca`, `POST /eventi/cerca` | Ricerca / operazioni specifiche del dominio |
 | **Motore ricerca** | `/motore-ricerca` | `/motore-ricerca/oggetti` | Solo metadati del query builder (oggetti, criteri, predefinite) |
-| **Composizione pagina** *(opzionale)* | `/pagine/{nome}` | `GET /pagine/ricerca/init` | Aggregato BFF per una singola schermata; non sostituisce le API di dominio |
+| **Composizione pagina** *(opzionale)* | `/pagine/{nome}` | `GET /pagine/ricerca-richieste/init`, `GET /pagine/ricerca-eventi/init` | Aggregato BFF per init di **una** schermata; non sostituisce le API di dominio |
 
 **Tag OpenAPI suggeriti:** `Territorio`, `Leggi`, `Enti`, `Richieste`, `Eventi`, `MotoreRicerca`
+
+**Paginazione (obbligatoria per tabelle dati):**
+
+| Livello | Regola |
+|---------|--------|
+| **API** | Endpoint che restituiscono elenchi tabellari espongono `page` e `pageSize` (query o body) e rispondono con `totale`, `pagina`, `totalePagine`, `items` (schema tipo `CercaRisultatoPage` o equivalente riusabile) |
+| **BFF** | `LIMIT`/`OFFSET` (o equivalente) in SQL; mai restituire l'intero dataset quando la UI è una tabella |
+| **Frontend** | `mat-table` + `mat-paginator`: ogni cambio pagina/dimensione richiama l'API; **vietata** paginazione client-side su array completi |
+
+Lookup piccoli (province, stati, leggi per select) possono restare array non paginati; le **tabelle di risultato** no.
 
 **Riutilizzo atteso:**
 
@@ -267,6 +380,7 @@ components:
 
     CercaItemRisultato:
       type: object
+      description: Item risultato ricerca eventi (e motore ricerca generico)
       properties:
         id:
           type: string
@@ -281,6 +395,109 @@ components:
           type: string
           nullable: true
         tipoGeometria:
+          type: string
+          nullable: true
+
+    CercaRichiestaItemRisultato:
+      type: object
+      description: |
+        Item risultato ricerca veloce richieste — parità colonne legacy
+        (risultatoRicerca.jsp + findCampoMtdRisRicercaVeloce, §3.6).
+      properties:
+        idRichiestaGenerica:
+          type: string
+          description: PK (colonna checkbox legacy)
+        codRichiesta:
+          type: string
+        nomeLegge:
+          type: string
+          nullable: true
+        stato:
+          type: string
+          nullable: true
+        enteRichiedente:
+          type: string
+          nullable: true
+        descrizioneProvincia:
+          type: string
+          nullable: true
+        descrizioneComune:
+          type: string
+          nullable: true
+        nOrdinanzaSindacale:
+          type: string
+          nullable: true
+        descrizioneDanno:
+          type: string
+          nullable: true
+        descrizioneIntervento:
+          type: string
+          nullable: true
+        importoSommaUrgenza:
+          type: number
+          format: double
+          nullable: true
+        importoUrgente:
+          type: number
+          format: double
+          nullable: true
+        importoDefinitivo:
+          type: number
+          format: double
+          nullable: true
+        codiceCup:
+          type: string
+          nullable: true
+        coX:
+          type: number
+          format: double
+          nullable: true
+        coY:
+          type: number
+          format: double
+          nullable: true
+        dataInserimento:
+          type: string
+          format: date
+          nullable: true
+        modData:
+          type: string
+          format: date
+          nullable: true
+        cognomeCompilatore:
+          type: string
+          nullable: true
+        classeRischio:
+          type: string
+          nullable: true
+        descrizioneEvento:
+          type: string
+          nullable: true
+        note:
+          type: string
+          nullable: true
+        categoriaDanno:
+          type: string
+          nullable: true
+        sottocategoriaDanno:
+          type: string
+          nullable: true
+        descrizioneDissesto:
+          type: string
+          nullable: true
+        dissestoSensoPai:
+          type: string
+          nullable: true
+        descrizioneTipoDissesto:
+          type: string
+          nullable: true
+        localita:
+          type: string
+          nullable: true
+        provvedimentoFinanziamento:
+          type: string
+          nullable: true
+        georiferito:
           type: string
           nullable: true
 
@@ -301,10 +518,24 @@ components:
           items:
             $ref: '#/components/schemas/CercaItemRisultato'
 
-    PaginaRicercaInitResponse:
+    CercaRichiesteRisultatoPage:
+      type: object
+      properties:
+        totale:
+          type: integer
+        pagina:
+          type: integer
+        totalePagine:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CercaRichiestaItemRisultato'
+
+    PaginaRicercaRichiesteInitResponse:
       type: object
       description: |
-        Aggregato opzionale per inizializzare la pagina ricerca con una sola chiamata.
+        Aggregato opzionale per inizializzare la pagina /ricerca/richieste con una sola chiamata.
         Compone le API di dominio già esposte singolarmente.
       properties:
         province:
@@ -327,14 +558,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TipoEnteItem'
-        ricerchePredefinite:
-          type: array
-          items:
-            $ref: '#/components/schemas/RicercaPredefinitaItem'
-        oggettiRicerca:
-          type: array
-          items:
-            $ref: '#/components/schemas/OggettoRicercaItem'
+
+    PaginaRicercaEventiInitResponse:
+      type: object
+      description: |
+        Aggregato opzionale per inizializzare la pagina /ricerca/eventi.
+        La pagina eventi non richiede i lookup della ricerca richieste.
+      properties: {}
 ```
 
 ---
@@ -351,7 +581,7 @@ API granulari da preferire: ogni sezione dell'app le importa direttamente.
 | GET | `/eventi` | `getEventi` | Eventi | `SPRINT_T_EVENTO`, `SPRINT_R_EVENTO_COMUNE` |
 | GET | `/tipi-ente` | `getTipiEnte` | Enti | `SPRINT_T_APPG_AGGREGAZIONI` |
 
-`GET /eventi` — parametri query per il dropdown filtro (riusabile anche fuori dalla pagina ricerca):
+`GET /eventi` — parametri query per il dropdown filtro nella pagina ricerca richieste (riusabile anche altrove):
 
 ```yaml
   /eventi:
@@ -383,26 +613,44 @@ API granulari da preferire: ogni sezione dell'app le importa direttamente.
       - basicAuth: []
 ```
 
-#### Opzione aggregata — solo per la pagina ricerca
+#### Opzione aggregata — init per pagina (due endpoint)
 
-Composizione BFF che chiama internamente le API di dominio sopra. **Non** sostituisce gli endpoint granulari.
+Composizione BFF che chiama internamente le API di dominio. **Non** sostituisce gli endpoint granulari. Una pagina Angular → un endpoint init (se si usa l'aggregato).
 
 ```yaml
-  /pagine/ricerca/init:
+  /pagine/ricerca-richieste/init:
     get:
       tags: [MotoreRicerca]
-      summary: Dati iniziali pagina ricerca
+      summary: Dati iniziali pagina ricerca richieste
       description: |
-        Equivalente del load `ricerca.do`. Aggrega province, stati, leggi, eventi,
-        tipi ente e metadati motore-ricerca in una sola risposta.
-      operationId: getPaginaRicercaInit
+        Equivalente del load filtri per la sezione richieste di `ricerca.do`.
+        Aggrega province, stati, leggi, eventi (lookup), tipi ente.
+      operationId: getPaginaRicercaRichiesteInit
       responses:
         "200":
-          description: Dati per inizializzare la pagina
+          description: Dati per inizializzare /ricerca/richieste
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginaRicercaInitResponse'
+                $ref: '#/components/schemas/PaginaRicercaRichiesteInitResponse'
+      security:
+      - basicAuth: []
+
+  /pagine/ricerca-eventi/init:
+    get:
+      tags: [MotoreRicerca]
+      summary: Dati iniziali pagina ricerca eventi
+      description: |
+        Init minimo per /ricerca/eventi. Opzionale: il frontend può aprire
+        la pagina senza lookup e invocare direttamente POST /eventi/cerca.
+      operationId: getPaginaRicercaEventiInit
+      responses:
+        "200":
+          description: Dati per inizializzare /ricerca/eventi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaRicercaEventiInitResponse'
       security:
       - basicAuth: []
 ```
@@ -508,7 +756,7 @@ Azione `cerca` sotto la risorsa di dominio: stesso contratto usabile da ricerca,
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CercaRisultatoPage'
+                $ref: '#/components/schemas/CercaRichiesteRisultatoPage'
         "400":
           $ref: '#/components/responses/InvalidParameter'
         "403":
@@ -664,14 +912,14 @@ Prefisso `/motore-ricerca` solo per i metadati del query builder, non per le ent
 
 ## 5. Priorità implementazione suggerita
 
-| Fase | Endpoint | Motivazione |
-|------|----------|-------------|
-| **1** | `GET /province`, `/richieste/stati`, `/leggi`, `/eventi`, `/tipi-ente` | Lookup riusabili — sbloccano ricerca e altre pagine |
-| **1** | `GET /comuni/suggest`, `GET /richieste/compilatori/suggest` | Autocomplete già usati in produzione (anche in nuova richiesta, mappa) |
-| **1** *(opz.)* | `GET /pagine/ricerca/init` | Comodo per la prima pagina Angular; opzionale se il frontend compone le chiamate |
-| **2** | `POST /richieste/cerca` | Core business — ricerca veloce richieste |
-| **2** | `POST /eventi/cerca` | Seconda sezione attiva della pagina |
-| **3** | `/motore-ricerca/*` | UI avanzata/predefinita legacy commentata; metadati query builder |
+| Fase | Deliverable | Motivazione |
+|------|-------------|-------------|
+| **1** | `GET /province`, `/richieste/stati`, `/leggi`, `/eventi`, `/tipi-ente` | Lookup riusabili — sbloccano pagina richieste e altre sezioni |
+| **1** | `GET /comuni/suggest`, `GET /richieste/compilatori/suggest` | Autocomplete (anche nuova richiesta, mappa) |
+| **1** *(opz.)* | `GET /pagine/ricerca-richieste/init` | Init aggregato pagina richieste; opzionale se il frontend compone i lookup |
+| **2** | `POST /richieste/cerca` + pagina `/ricerca/richieste` | Core business — ricerca veloce richieste con tabella paginata backend |
+| **2** | `POST /eventi/cerca` + pagina `/ricerca/eventi` | Ricerca eventi — pagina separata, stesso pattern di paginazione |
+| **3** | `/motore-ricerca/*` | Ricerca avanzata/predefinita legacy; eventuale terza pagina o modale |
 
 ---
 
@@ -687,14 +935,17 @@ Prefisso `/motore-ricerca` solo per i metadati del query builder, non per le ent
 
 5. **Si/No statici**: `flgDissestoSensoPai` e `flgRichiestaGeoriferita` non richiedono API dedicate.
 
-6. **Risultati e azioni successive**: `risultatoRicerca.jsp` supporta invio multiplo richieste, mappa, Excel, dettaglio (`visualizzaDettaglioRicerca.do`). Sono **fuori scope** di questo documento ma dipendono dalle stesse entità Richiesta/Evento.
+6. **Paginazione tabelle**: ogni `mat-table` di risultati usa `mat-paginator` collegato ai parametri `page` / `pageSize` dell'API e al `totale` in risposta. Vietato paginare lato client su dataset completi.
+
+7. **Risultati e azioni successive**: `risultatoRicerca.jsp` supporta invio multiplo richieste, mappa, Excel, dettaglio (`visualizzaDettaglioRicerca.do`). Sono **fuori scope** di questo documento ma dipendono dalle stesse entità Richiesta/Evento.
 
 ---
 
 ## 7. Prossimi passi
 
-- [ ] Validare se il frontend compone i lookup (`/leggi`, `/province`, …) o usa l'aggregato `GET /pagine/ricerca/init`
-- [ ] Trasferire gli schemi YAML in `openapi.yaml` (fase 1)
+- [ ] Creare in `sprintwcl` due route/feature: `ricerca-richieste` e `ricerca-eventi` (menu e navigazione distinti)
+- [ ] Validare se il frontend compone i lookup (`/leggi`, `/province`, …) o usa `GET /pagine/ricerca-richieste/init`
+- [ ] Trasferire gli schemi YAML in `openapi.yaml` (fase 1), inclusi `page`/`pageSize` su ogni endpoint lista
 - [ ] Aggiornare `schema/api-tables.md` per ogni endpoint che tocca il DB
-- [ ] Implementare i Manager di dominio in `sprintbff` (`LeggiManager`, `RichiesteManager`, …) invece di un unico `RicercaManager` monolitico
-- [ ] Pagina `sprintwcl` che consuma i servizi generati
+- [ ] Implementare i Manager di dominio in `sprintbff` (`LeggiManager`, `RichiesteManager`, `EventiManager`, …) invece di un unico `RicercaManager` monolitico
+- [ ] Tabelle risultato con `mat-paginator` → richiamo API a ogni cambio pagina (paginazione backend)
