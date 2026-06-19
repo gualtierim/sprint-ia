@@ -2,7 +2,33 @@
   "permissions": {
     "allow": [
       "Bash(ln:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(git -C sprintwcl status --short)",
+      "Bash(git -C sprintbff status --short)",
+      "Bash(grep -niA 20 \"CREATE TABLE.*SPRINT_MTD_CAMPO_RIS_RICERCA\\\\|CREATE TABLE.*SPRINT_MTD_R_CAMPO_OGGPROF\\\\|CREATE TABLE.*SPRINT_MTD_OGGETTO\\\\|CREATE TABLE.*SPRINT_MTD_PROFILO_UTENTE\\\\|CREATE TABLE.*SPRINT_MTD_R_OGG_PROF\" schema/migrations/V001__baseline.sql)",
+      "Bash(mvn -s /Users/mariogualtieri/.m2/settings-manu.xml generate-sources -q)",
+      "Bash(PGCONNECT_TIMEOUT=8 PGPASSWORD='ma1orieS' psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select count\\(*\\) from sprint.sprint_d_richiesta_generica;\")",
+      "Bash(export PGPASSWORD='ma1orieS')",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select column_name||' '||data_type from information_schema.columns where table_schema='sprint' and table_name='sprint_d_richiesta_generica' order by ordinal_position;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select nome_colonna||' \\('||count\\(*\\)||'\\)' from sprint.sprint_d_richiesta_generica group by nome_colonna order by nome_colonna;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select id||'|'||coalesce\\(codice,''\\)||'|'||descrizione||'|obs='||coalesce\\(flg_obsoleto::text,''\\) from sprint.sprint_d_richiesta_generica where nome_colonna='FK_TIPO_STRADA' order by ordine,descrizione;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select id||'|'||coalesce\\(codice,''\\)||'|'||descrizione||'|obs='||coalesce\\(flg_obsoleto::text,''\\) from sprint.sprint_d_richiesta_generica where nome_colonna='FK_SEDIME' order by ordine,descrizione;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select id||'|p='||coalesce\\(fk_padre::text,''\\)||'|c='||coalesce\\(codice,''\\)||'|'||descrizione||'|tip='||coalesce\\(tipologia,''\\)||'|obs='||coalesce\\(flg_obsoleto::text,''\\) from sprint.sprint_d_richiesta_generica where nome_colonna='FK_CATEGORIA' order by ordine,descrizione limit 12;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select 'codice='||coalesce\\(codice,'NULL'\\)||' n='||count\\(*\\) from sprint.sprint_d_richiesta_generica where nome_colonna='FK_CATEGORIA' group by codice order by codice;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select 'flg='||coalesce\\(flg_straordinario::text,'NULL'\\)||' n='||count\\(*\\) from sprint.sprint_t_evento group by flg_straordinario;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select 'CAT_nonobs='||count\\(*\\) from sprint.sprint_d_richiesta_generica where nome_colonna='FK_CATEGORIA' and codice='CAT' and coalesce\\(flg_obsoleto,0\\)=0;\")",
+      "Bash(psql -h tst-domdb67.csi.it -p 5432 -U sprint -d PGSITTST -tA -c \"select id::text||'='||descrizione from sprint.sprint_d_richiesta_generica where nome_colonna='FK_TIPO_STRADA' and coalesce\\(flg_obsoleto,0\\)=0 order by ordine nulls last, descrizione;\")",
+      "Bash(mvn -v)",
+      "Bash(mvn -q -s ~/.m2/settings-manu.xml compile)",
+      "Bash(export JAVA_HOME=/Library/Java/JavaVirtualMachines/amazon-corretto-25.jdk/Contents/Home)",
+      "Bash(mvn -s /Users/mariogualtieri/.m2/settings-manu.xml compile)",
+      "Bash(sed -n '27,40p' pom.xml)",
+      "Bash(mvn -q -s ~/.m2/settings-manu.xml generate-sources)",
+      "Bash(mvn -q -s ~/.m2/settings-manu.xml compile -Dmaven.compiler.release=17)",
+      "Bash(mvn -s ~/.m2/settings-manu.xml compile -X)",
+      "Bash(mvn -s ~/.m2/settings-manu.xml help:effective-pom)",
+      "Bash(mvn -q -s ~/.m2/settings-manu.xml compile -Dmaven.compiler.source=17 -Dmaven.compiler.target=17 -Dmaven.compiler.release=17)",
+      "Bash(mvn -s ~/.m2/settings-manu.xml compile)"
     ]
   }
 }
