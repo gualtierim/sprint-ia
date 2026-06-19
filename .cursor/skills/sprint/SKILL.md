@@ -73,7 +73,7 @@ export GITLAB_TOKEN=glpat-...
 ./scripts/clone-repos.sh
 ```
 
-**Maven (sprintbff):** il plugin CSI `csi-java-swagger3-codegen` è nel repository interno CSI. `scripts/dev.sh` e `scripts/regenerate-api.sh` usano `~/.m2/settings-manu.xml` quando disponibile. Il `pom.xml` di `sprintbff` non va modificato per questo.
+**Maven (sprintbff):** il plugin CSI `csi-java-swagger3-codegen` è nel repository interno CSI. Per comandi Maven manuali e setup JDK locale vedi skill [maven-local](../maven-local/SKILL.md). Il `pom.xml` di `sprintbff` non va modificato per i settings Maven.
 
 ## Workflow commit
 

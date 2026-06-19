@@ -54,7 +54,7 @@ Task Progress:
 - [ ] 1. Verificare tabelle esistenti in schema/tables.md e sql.properties di sprintj
 - [ ] 2. Scrivere migration in schema/migrations/
 - [ ] 3. Aggiornare schema/tables.md se si aggiungono tabelle
-- [ ] 4. Implementare accesso dati in sprintbff (*Manager / DAO) con **Lombok** e mapper MyBatis; conversioni Row/Entity → VO con **MapStruct** (skill `backend`); query derivate da `sprintj/.../sql.properties`; per elenchi tabellari usare `LIMIT`/`OFFSET` (o equivalente) in base a `page`/`pageSize`
+- [ ] 4. Implementare accesso dati in sprintbff (*Manager / DAO) con **Lombok** e mapper MyBatis (SQL in `resources/mapper/*.xml`, mai `@Select` inline — regola `mybatis-xml`); conversioni Row/Entity → VO con **MapStruct** (skill `backend`); query derivate da `sprintj/.../sql.properties`; per elenchi tabellari usare `LIMIT`/`OFFSET` (o equivalente) in base a `page`/`pageSize`
 - [ ] 5. Aggiornare schema/api-tables.md per ogni endpoint che tocca il DB
 - [ ] 6. Aggiornare openapi.yaml e rigenerare (skill sprint-api)
 ```
@@ -150,6 +150,7 @@ sprintj/src/java/it/csi/sprint/integration/dao/*/impl/sql.properties
 - [ ] Per query dirette al DB ho usato le credenziali da `application-local.properties`?
 - [ ] Gli endpoint lista/tabella paginano in SQL (`LIMIT`/`OFFSET` + count) e non caricano tutto il result set?
 - [ ] Le query sono allineate a `sprintj/.../sql.properties` (nessun mock)?
+- [ ] Le query MyBatis sono in file XML (`resources/mapper/`), non in annotazioni Java?
 
 ## Riferimenti
 

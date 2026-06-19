@@ -1,0 +1,60 @@
+---
+description: Query MyBatis sprintbff — solo file XML, mai annotazioni inline in Java
+globs: sprintbff/**/*.java,sprintbff/**/*.xml
+alwaysApply: false
+---
+
+# MyBatis — query solo in XML
+
+In `sprintbff`, **tutte** le query SQL MyBatis vanno definite in file `.xml`, **mai** come annotazioni inline (`@Select`, `@Insert`, `@Update`, `@Delete`, `@Results`, …) nelle interfacce Java.
+
+## Struttura
+
+| Elemento | Percorso |
+|----------|----------|
+| Interfaccia mapper | `src/main/java/.../dao/mapper/*Mapper.java` — solo firme metodo + `@Param` |
+| Query SQL | `src/main/resources/mapper/*Mapper.xml` — `namespace` = FQCN dell'interfaccia |
+
+Configurazione: `mybatis.mapper-locations=classpath:mapper/**/*.xml` in `application.properties`.
+
+## Interfaccia Java (consentito)
+
+```java
+@Mapper
+public interface LookupMapper {
+
+    List<LookupEntity> findStatiRichiesta();
+
+    List<LookupEntity> findEventiByComune(@Param("idComune") int idComune);
+}
+```
+
+## File XML (obbligatorio per ogni query)
+
+```xml
+<mapper namespace="it.csi.sprint.sprintbff.dao.mapper.LookupMapper">
+
+    <select id="findStatiRichiesta" resultType="it.csi.sprint.sprintbff.dao.model.LookupEntity">
+        SELECT id::text AS codice, descrizione
+        FROM sprint.sprint_d_richiesta_generica
+        WHERE nome_colonna = 'FK_STATO'
+        ORDER BY id
+    </select>
+
+</mapper>
+```
+
+## Regole
+
+- `id` nel XML = nome del metodo nell'interfaccia Java.
+- `namespace` = package completo + nome interfaccia (es. `it.csi.sprint.sprintbff.dao.mapper.RicercaMapper`).
+- Usare `resultType` con FQCN del model in `dao.model` (o alias se configurato).
+- SQL dinamico (`<if>`, `<where>`, `<choose>`) solo nel XML.
+- Commenti sul legacy (`sql.properties` di sprintj) nel XML, non nel Java.
+- **Vietato**: `@Select`, `@Insert`, `@Update`, `@Delete`, `@Results` sulle interfacce `dao.mapper`.
+
+## Checklist
+
+- [ ] Nuova query → nuovo `<select>` / `<insert>` / `<update>` / `<delete>` nel file XML del mapper?
+- [ ] L'interfaccia Java contiene solo firme, senza SQL?
+- [ ] Il `namespace` XML corrisponde al FQCN dell'interfaccia?

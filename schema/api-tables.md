@@ -11,16 +11,17 @@ Endpoint definiti in `sprintbff/src/main/resources/static/api/openapi.yaml`.
 | GET | `/province` | `getProvince` | `LookupManager` | — (legacy hardcoded Piemonte) |
 | GET | `/leggi` | `getLeggi` | `LookupManager` | `SPRINT_MTD_LEGGE` |
 | GET | `/richieste/stati` | `getRichiesteStati` | `LookupManager` | `SPRINT_D_RICHIESTA_GENERICA` |
-| GET | `/eventi` | `getEventi` | `LookupManager` | `SPRINT_T_EVENTO`, `SPRINT_R_EVENTO_COMUNE` |
+| GET | `/eventi` | `getEventi` | `LookupManager` | `SPRINT_T_EVENTO`, `SPRINT_R_EVENTO_COMUNE` (straordinario=false → `SPRINT_T_EVENTO` flg=0) |
 | GET | `/tipi-ente` | `getTipiEnte` | `LookupManager` | `SPRINT_T_APPG_AGGREGAZIONI` |
 | GET | `/comuni/suggest` | `suggestComuni` | `LookupManager` | `VSDE_RIC_38_STRAO_PT_TUTTE` (soloConRichieste); LOTO → non impl. |
 | GET | `/richieste/compilatori/suggest` | `suggestRichiesteCompilatori` | `LookupManager` | `VSDE_RIC_38_STRAO_PT_TUTTE` |
 | GET | `/indirizzi/suggest` | `suggestIndirizzi` | `LookupManager` | TOPE → non impl. |
-| GET | `/tipi-strada` | `getTipiStrada` | `LookupManager` | non impl. |
-| GET | `/sedimi` | `getSedimi` | `LookupManager` | non impl. |
-| GET | `/richieste/categorie` | `getRichiesteCategorie` | `LookupManager` | non impl. |
+| GET | `/tipi-strada` | `getTipiStrada` | `LookupManager` | `SPRINT_D_RICHIESTA_GENERICA` (NOME_COLONNA='FK_TIPO_STRADA') |
+| GET | `/sedimi` | `getSedimi` | `LookupManager` | `SPRINT_D_RICHIESTA_GENERICA` (NOME_COLONNA='FK_SEDIME') |
+| GET | `/richieste/categorie` | `getRichiesteCategorie` | `LookupManager` | `SPRINT_D_RICHIESTA_GENERICA` (NOME_COLONNA='FK_CATEGORIA', CODICE='CAT'; idLegge non filtra) |
 | GET | `/richieste/metadati/{idLegge}` | `getRichiesteMetadatiByLegge` | `MetadatiManager` | non impl. |
 | POST | `/richieste/cerca` | `cercaRichieste` | `RicercaManager` | `VSDE_RIC_38_STRAO_PT_TUTTE` |
+| GET | `/richieste/colonne-risultato` | `getRichiesteColonneRisultato` | `RicercaManager` | `SPRINT_MTD_CAMPO_RIS_RICERCA`, `SPRINT_MTD_R_CAMPO_OGGPROF`, `SPRINT_MTD_OGGETTO`, `SPRINT_MTD_PROFILO_UTENTE` |
 | POST | `/eventi/cerca` | `cercaEventi` | `RicercaManager` | `SPRINT_T_EVENTO`, `SPRINT_D_EVENTO`, `SPRINT_R_EVENTO_COMUNE`, `SPRINT_T_AREA_IDRO`, `SPRINT_R_AREA_IDRO_EVENTO` |
 | POST | `/richieste` | `creaRichiesta` | `RichiesteManager` | `SPRINT_T_RIC_GENERICA` (in-memory) |
 | GET | `/richieste/{id}` | `getRichiesta` | `RichiesteManager` | `VSDE_RIC_38_STRAO_PT_TUTTE` (fallback DB; creazione ancora in-memory) |

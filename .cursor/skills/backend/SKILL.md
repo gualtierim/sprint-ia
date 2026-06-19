@@ -118,6 +118,17 @@ private RichiestaDetailResponse toDetailResponse(RichiestaDetailRow row) {
 
 Errori comuni da evitare: `@Mapper` o Lombok su classi in `vo/`, fix puntuali in `*Api.java`, setter manuali su VO al posto di aggiornare lo schema OpenAPI.
 
+## MyBatis — query solo in XML
+
+Tutte le query SQL MyBatis vanno in file `.xml` sotto `src/main/resources/mapper/`, **mai** come annotazioni inline (`@Select`, `@Insert`, `@Update`, `@Delete`) nelle interfacce `dao.mapper`.
+
+| Elemento | Percorso |
+|----------|----------|
+| Interfaccia | `dao/mapper/*Mapper.java` — solo firme + `@Param` |
+| SQL | `resources/mapper/*Mapper.xml` — `namespace` = FQCN interfaccia, `id` = nome metodo |
+
+Vedi regola `.cursor/rules/mybatis-xml.mdc` per esempi e checklist.
+
 ## Altri vincoli backend
 
 - **Java 17** nel codice (`java.version=17`); JDK 25 ok in build/runtime
@@ -134,6 +145,7 @@ Errori comuni da evitare: `@Mapper` o Lombok su classi in `vo/`, fix puntuali in
 - [ ] Non ho modificato file generati da swagger-codegen (`*Api.java`, `vo/*`, …)?
 - [ ] Se serviva un nuovo campo o endpoint, ho aggiornato `openapi.yaml` e rigenerato?
 - [ ] Non ho applicato MapStruct/Lombok a file generati da OpenAPI?
+- [ ] Le query MyBatis sono in `resources/mapper/*.xml`, non in annotazioni Java?
 - [ ] Il codice rispetta Java 17?
 
 ## Riferimenti

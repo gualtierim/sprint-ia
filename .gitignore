@@ -39,3 +39,5 @@ classes/
 /sprintbff/
 /sprintwcl/
 /sprintj/
+
+.claude/settings.local.json

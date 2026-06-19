@@ -10,6 +10,8 @@ All'inizio di ogni conversazione, leggi SEMPRE questi file prima di rispondere a
 - `.cursor/rules/frontend-http.mdc` — Convenzioni HTTP frontend Angular
 - `.cursor/skills/table-columns/SKILL.md` — Colonne tabella configurabili (popup + sessionStorage)
 - `.cursor/skills/backend/SKILL.md` — Backend sprintbff: MapStruct, Manager, conversioni Row→VO
+- `.cursor/skills/maven-local/SKILL.md` — Maven e JDK 25 locale (settings-manu.xml)
+- `.cursor/rules/mybatis-xml.mdc` — Query MyBatis solo in file XML, mai annotazioni inline
 
 Queste sono le regole di progetto. Rispettale in ogni intervento sul codice.
 
@@ -22,3 +24,4 @@ Le stesse skill sono invocabili singolarmente come comandi:
 - `/commands/schema`
 - `/commands/table-columns`
 - `/commands/backend`
+- `/commands/maven-local`

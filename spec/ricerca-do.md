@@ -219,6 +219,79 @@ Lo schema OpenAPI in `openapi.yaml` espone gli stessi campi in camelCase. I deco
 
 ---
 
+### 3.7 Composizione colonne per ruolo/profilo
+
+Domanda chiave: **le colonne della tabella risultati dipendono dal ruolo utente?**
+
+| | Ricerca **veloce** richieste | Ricerca **avanzata** / **predefinita** |
+|---|---|---|
+| Submit legacy | `avviaRicercaVeloce.do` | motore ricerca (`/motore-ricerca/*`) |
+| Colonne dipendono dal ruolo? | **NO — elenco fisso, uguale per tutti** | **SÌ — colonne per profilo** |
+| Metodo DAO | `findCampoMtdRisRicercaVeloce()` (nessun parametro) | `findCampoMtdRisRicercaByProfiloAndOggetto(idOggetto, profilo)` / `...ByProfiloAndRicPred(idRicPred, profilo)` |
+| Fonte colonne | `SPRINT_D_RICHIESTA_GENERICA` (3 righe di config statica) | `SPRINT_MTD_CAMPO_RIS_RICERCA` + relazioni profilo |
+| Ordine colonne | ordine dei token nella config | colonna `ORDINE` della relazione profilo↔campo |
+
+**Risposta:** la **ricerca veloce richieste** (quella migrata in `/ricerca/richieste`) ha **colonne fisse, identiche per ogni ruolo**. Il meccanismo «colonne per profilo» **esiste** nel legacy ma riguarda **solo la ricerca avanzata e le ricerche predefinite** (fase 3), non la ricerca veloce.
+
+#### Ricerca veloce — colonne fisse (nessun ruolo)
+
+Il metodo che alimenta `campiRicercaList` ha firma **senza parametri**: non riceve nemmeno il profilo.
+
+```java
+// integration/dao/ricerca/IRicercaDAO.java:99
+public Collection findCampoMtdRisRicercaVeloce() throws DAOException;
+```
+
+```java
+// integration/dao/ricerca/impl/RicercaDAOImpl.java:1695-1777
+public Collection findCampoMtdRisRicercaVeloce() throws DAOException {
+    // TABELLA_RICERCA_VELOCE = "VSDE_RIC_38_STRAO_PT_TUTTE"  (:1693)
+    query = "select DESCRIZIONE from SPRINT_D_RICHIESTA_GENERICA where NOME_COLONNA = 'FK_DESCR_CAMPO_RIS_RICERCA'"; // :1711 → header
+    query = "select DESCRIZIONE from SPRINT_D_RICHIESTA_GENERICA where NOME_COLONNA = 'FK_CAMPO_RIS_RICERCA'";        // :1717 → campo SQL
+    query = "select DESCRIZIONE from SPRINT_D_RICHIESTA_GENERICA where NOME_COLONNA = 'FK_DECORATOR'";                // :1723 → decorator
+    // obj.setTabella(TABELLA_RICERCA_VELOCE);  flgPk = true solo per i == 0  (:1750)
+}
+```
+
+Catena: `RicercaAction.avviaRicercaVeloce()` (`:2233-2570`) → `ricercaBD.avviaRicercaVeloce(dto, fec)` (`:2541`) → `RicercaBean.avviaRicercaVeloce(...)` → `findCampoMtdRisRicercaVeloce()` (`RicercaBean.java:724`) → `form.setCampiRicercaList(...)` (`:2555`).
+
+> Il `profilo` (`ruolo@dominio`, da `FrontEndContext`) **viene passato** a `RicercaBean.avviaRicercaVeloce(...)`, ma è usato solo per filtrare i **dati** (visibilità/aggregazione territoriale), **non** per comporre le colonne.
+
+#### Ricerca avanzata / predefinita — colonne per profilo
+
+Solo qui le colonne sono scelte e ordinate per profilo, leggendo dalle tabelle metadati `SPRINT_MTD_*`:
+
+```java
+// RicercaDAOImpl.java:601-658  (ricerca avanzata, per oggetto + profilo)
+"from SPRINT_MTD_CAMPO_RIS_RICERCA c, SPRINT_MTD_R_CAMPO_OGGPROF r, SPRINT_MTD_PROFILO_UTENTE p " +
+"where c.ID_CAMPO_RIS_RICERCA = r.ID_CAMPO_RIS_RICERCA and p.ID_PROFILO = r.ID_PROFILO " +
+"and r.ID_OGGETTO = ? and p.DENOMINAZIONE = ? order by r.ORDINE";   // DENOMINAZIONE = ruolo@dominio
+```
+
+```java
+// RicercaDAOImpl.java:660-718  (ricerca predefinita, per ricerca pred. + profilo)
+"from SPRINT_MTD_CAMPO_RIS_RICERCA c, SPRINT_MTD_R_CAMPO_RICERCAPRED r, " +
+"     SPRINT_MTD_PROFILO_UTENTE p, SPRINT_MTD_R_PROFILO_RICERCA pr " +
+"where ... and pr.ID_RICERCA_PRED = r.ID_RICERCA_PRED and r.ID_RICERCA_PRED = ? " +
+"and p.DENOMINAZIONE = ? order by r.ORDINE";
+```
+
+| Tabella | Ruolo |
+|---------|-------|
+| `SPRINT_MTD_CAMPO_RIS_RICERCA` | catalogo campi-colonna disponibili (descrizione, decorator, …) |
+| `SPRINT_MTD_R_CAMPO_OGGPROF` | relazione campo ↔ (oggetto, profilo) + `ORDINE` (avanzata) |
+| `SPRINT_MTD_R_CAMPO_RICERCAPRED` | relazione campo ↔ ricerca predefinita + `ORDINE` |
+| `SPRINT_MTD_PROFILO_UTENTE` | profili utente; chiave logica `DENOMINAZIONE = ruolo@dominio` |
+| `SPRINT_MTD_R_PROFILO_RICERCA` | relazione profilo ↔ ricerca predefinita |
+
+#### Implicazioni per la migrazione
+
+- **`/ricerca/richieste`:** la ricerca dati resta su `POST /richieste/cerca` (vista `VSDE_RIC_38_STRAO_PT_TUTTE`, set completo `CercaRichiestaItemRisultato`, §3.6). La **composizione delle colonne visibili** è invece servita per profilo dal BFF (vedi sotto), e l'utente può ulteriormente personalizzare la visibilità **lato frontend** (popup colonne + `sessionStorage`, skill `table-columns`).
+- **Colonne per profilo (implementato):** `GET /richieste/colonne-risultato` (`RicercaManager.getColonneRisultatoRichieste`) legge le colonne per il profilo corrente (`ruolo@dominio`) dall'oggetto legacy **"Tutte le richieste"** via `SPRINT_MTD_CAMPO_RIS_RICERCA` + `SPRINT_MTD_R_CAMPO_OGGPROF` + `SPRINT_MTD_OGGETTO` + `SPRINT_MTD_PROFILO_UTENTE` (ordine da `ORDINE`). Le colonne avanzate prive di corrispondenza nella vista quick-search (es. *Aree Idrografiche*, *Importo richiesto*) sono escluse con log; se il profilo non ha configurazione si ritorna il set di default (§3.6). Il frontend consuma questo endpoint al posto dell'elenco hardcoded.
+- **Ricerca avanzata/predefinita completa:** resta fase 3 (`GET /motore-ricerca/oggetti/{idOggetto}/campi-risultato`, §4.5) — l'esecuzione della query avanzata richiede il porting dell'SQL Oracle (`CONNECT BY`, `sys_connect_by_path`) degli oggetti `SPRINT_MTD_OGGETTO.appg_from`.
+
+---
+
 ## 4. Proposta API Swagger (bozza)
 
 Contratto target: `sprintbff/src/main/resources/static/api/openapi.yaml`
