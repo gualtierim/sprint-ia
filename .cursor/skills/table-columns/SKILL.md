@@ -11,6 +11,52 @@ description: >-
 
 Ogni tabella dati (`mat-table`) in `sprintwcl` deve permettere all'utente di **scegliere quali colonne visualizzare**. La configurazione avviene tramite **popup** (`mat-dialog`) e viene **persistita in `sessionStorage`** con chiave prefissata dalla **pagina corrente** (route Angular).
 
+## Stile visivo
+
+Tutte le `mat-table` usano lo stile globale in `src/app/core/table-columns/mat-table.scss` (importato da `styles.scss`):
+
+- **Header**: sfondo blu (`--mat-sys-primary`), testo bianco (`--mat-sys-on-primary`), font-weight 500.
+- **Righe dati**: alternate bianco (`--mat-sys-surface`) e grigio chiaro (`--mat-sys-surface-container-low`).
+- **Hover riga**: leggero highlight primary.
+
+Non duplicare questi stili nei componenti; eventuali regole locali devono limitarsi a larghezza colonne e layout.
+
+## Colonne ridimensionabili
+
+Ogni `mat-table` dati deve essere **resizable** tramite la direttiva condivisa `sprintMatTableResizable`:
+
+```html
+<table
+  mat-table
+  sprintMatTableResizable
+  [resizableTableId]="tableId"
+  [resizableExclude]="['azioni']"
+  [dataSource]="rows()"
+>
+```
+
+| Input | Obbligatorio | Descrizione |
+|-------|--------------|-------------|
+| `resizableTableId` | sì | Stesso `tableId` usato per visibilità colonne |
+| `resizablePageKey` | no | Default: path route corrente (come `pageKey`) |
+| `resizableMinWidth` | no | Larghezza minima colonna in px (default `56`) |
+| `resizableExclude` | no | Colonne senza handle (es. `azioni`) |
+| `resizableColumnDefs` | no | Definizioni colonne per override `initialWidth` |
+
+Le larghezze sono persistite in `sessionStorage` con chiave:
+
+```
+{pageKey}:table-column-widths:{tableId}
+```
+
+Valore JSON: oggetto `{ field: widthPx }`, es. `{ "codRichiesta": 140, "stato": 96 }`.
+
+L'utente trascina il bordo destro dell'header per ridimensionare. Le larghezze salvate si ripristinano al reload della pagina (stessa sessione).
+
+**Larghezza iniziale:** se non c'è una larghezza salvata, viene calcolata automaticamente dal titolo colonna (testo header + padding) in modo che il label sia visibile. Opzionalmente `TableColumnDef.initialWidth` (px) o input `resizableColumnDefs` per override espliciti. Le default non vengono salvate in `sessionStorage` finché l'utente non ridimensiona manualmente.
+
+Implementazione: `mat-table-resizable.directive.ts` + `table-column-widths.storage.ts` in `src/app/core/table-columns/`.
+
 ## Regola obbligatoria
 
 - Ogni `mat-table` con colonne dati deve esporre un pulsante «Colonne» (icona `view_column` o equivalente Material) che apre il popup.
@@ -46,7 +92,10 @@ Centralizzare logica e UI riutilizzabile:
 ```
 sprintwcl/src/app/core/table-columns/
 ├── table-column-def.ts          # tipo TableColumnDef
-├── table-columns.storage.ts     # read/write sessionStorage
+├── table-columns.storage.ts     # read/write sessionStorage visibilità
+├── table-column-widths.storage.ts # read/write sessionStorage larghezze
+├── mat-table-resizable.directive.ts
+├── mat-table.scss               # stile header/righe alternate + resize handle
 ├── table-columns-dialog.component.ts
 └── table-columns.service.ts     # openDialog + merge visibilità
 ```
@@ -58,6 +107,7 @@ export interface TableColumnDef<T = string> {
   field: T;
   label: string;
   hideable?: boolean; // default true; false = sempre visibile
+  initialWidth?: number; // px; default: calcolato dal label
 }
 ```
 
@@ -114,6 +164,7 @@ Task Progress:
 - [ ] 3. All'init: caricare visibilità da sessionStorage → `displayedColumns`
 - [ ] 4. Template: `*matHeaderRowDef` / `*matRowDef` usano `displayedColumns()`, non l'elenco completo
 - [ ] 5. Pulsante «Colonne» sopra la tabella → `openPicker` → aggiorna `displayedColumns` e salva
+- [ ] 6. Direttiva `sprintMatTableResizable` con `[resizableTableId]="tableId"`
 ```
 
 Esempio (semplificato):
@@ -172,6 +223,8 @@ Prima di considerare completa una tabella:
 - [ ] Colonne funzionali (selezione, azioni) sono sempre visibili (`hideable: false`)?
 - [ ] `displayedColumns` è usato in `matHeaderRowDef` / `matRowDef`, non l'array completo fisso?
 - [ ] Logica condivisa in `src/app/core/table-columns/` (non duplicata per pagina)?
+- [ ] Nessuno stile header/righe alternate duplicato localmente (gestito da `mat-table.scss`)?
+- [ ] La tabella ha `sprintMatTableResizable` e `[resizableTableId]`?
 
 ## Relazioni
 
