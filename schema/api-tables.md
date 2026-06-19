@@ -38,7 +38,9 @@ Endpoint definiti in `sprintbff/src/main/resources/static/api/openapi.yaml`.
 | GET/POST/DELETE | `/richieste/{id}/allegati*` | `*RichiestaAllegat*` | `RichiesteManager` | `SPRINT_T_ALLEGATO_RIC`, `SPRINT_R_RICGEN_ALLEGATO` (GET folder da DB); creazione in-memory |
 | POST | `/richieste/{id}/invia` | `inviaRichiesta` | `RichiesteManager` | `SPRINT_T_RIC_GENERICA` (in-memory) |
 | GET | `/utente/contesto` | `getUtenteContesto` | `UtenteManager` | `SPRINT_MTD_UTENTE`, `SPRINT_MTD_PROFILO_UTENTE` (se `sprint.utente.codFiscale` valorizzata; altrimenti sessione Iride) |
-| GET | `/motore-ricerca/*` | `*` | `MotoreRicercaManager` | non impl. (fase 3) |
+
+> Gli endpoint `/motore-ricerca/*` sono stati **rimossi dal contratto** (erano 501 e senza
+> consumatori). Design conservato in [spec/motore-ricerca.md](../spec/motore-ricerca.md) per la fase 3.
 
 ## Legenda
 

@@ -41,23 +41,18 @@ PATCH dei folder su richieste già a DB, `/utente/contesto`, `suggestCompilatori
 | A4 ✅ | `GET /eventi` (non straordinari) | `LookupManager.getEventi` | ~~ramo `straordinario=false`~~ **fatto** (flg=0; null→straordinari, parità legacy) | `SPRINT_T_EVENTO` | Bassa | ~~0,5 g~~ |
 | A5 | `GET /comuni/suggest` (LOTO) | `LookupManager.suggestComuni` | autocomplete comuni completo via servizio **LOTO** (oggi solo `soloConRichieste=true`) | servizio esterno LOTO | Media/Alta* | **2–3 g** |
 | A6 | `GET /indirizzi/suggest` | `LookupManager.suggestIndirizzi` | autocomplete indirizzi via servizio **TOPE** | servizio esterno TOPE (`RicercaTopeDAO`) | Media/Alta* | **2–3 g** |
-| A7 | `GET /motore-ricerca/oggetti` | `MotoreRicercaManager.getOggetti` | elenco oggetti ricercabili | metadati motore ricerca | Media | incl. in A13 |
-| A8 | `GET /motore-ricerca/predefinite` | `getPredefinite` | ricerche predefinite per profilo | metadati + profilo | Media | incl. in A13 |
-| A9 | `GET /motore-ricerca/oggetti/{id}/criteri` | `getCriteriByOggetto` | criteri per oggetto | metadati motore ricerca | Media | incl. in A13 |
-| A10 | `GET /motore-ricerca/oggetti/{id}/campi-risultato` | `getCampiRisultatoByOggetto` | colonne risultato | metadati motore ricerca | Media | incl. in A13 |
-| A11 | `GET /motore-ricerca/criteri/{id}/valori` | `getValoriByCriterio` | valori ammessi per criterio | metadati + lookup | Media | incl. in A13 |
-| A12 | `POST /motore-ricerca/esecuzione` | `esegui` | **query builder dinamico** + paginazione | molte tabelle (dipende dall'oggetto) | Alta | incl. in A13 |
-| A13 | `POST /motore-ricerca/predefinite/{id}/esecuzione` | `eseguiPredefinita` | esecuzione ricerca salvata | come A12 | Alta | **Motore ricerca completo (A7–A13): 8–15 g** |
+| A7–A13 | `/motore-ricerca/*` (7 endpoint) | — | **rimossi dal contratto** (erano 501, senza consumatori) | — | — | re-introduzione fase 3: **8–15 g** |
 
 \* A5/A6 dipendono da **servizi esterni CSI** (LOTO, TOPE): la stima vale se il servizio è
 raggiungibile e documentato. Se richiede convenzioni/credenziali/onboarding rete, l'effort
 e i tempi possono crescere (rischio esterno, non di codice). **Analisi dedicata, scenari di
 integrazione e prerequisiti: [integrazione-loto-tope.md](./integrazione-loto-tope.md).**
 
-**Note motore ricerca (fase 3):** è la voce più pesante. Il legacy lo modella con
-`MotoreRicercaDTO` / `ItemMotoreRicercaDTO` e SQL in `dao/ricerca/impl/sql.properties`:
-oggetti → criteri → campi risultato e un costruttore di query dinamico con paginazione.
-Va trattato come **mini-progetto a sé** (metadati + motore di esecuzione + UI dedicata).
+**Note motore ricerca (fase 3):** è la voce più pesante. Gli endpoint `/motore-ricerca/*` sono
+stati **rimossi dal contratto** (erano 501 e senza consumatori) — design conservato in
+[motore-ricerca.md](./motore-ricerca.md). Il legacy lo modella con `MotoreRicercaDTO` /
+`ItemMotoreRicercaDTO`: oggetti → criteri → campi risultato e un costruttore di query dinamico
+con paginazione. Va trattato come **mini-progetto a sé** (metadati + esecuzione + UI dedicata).
 
 ---
 
@@ -101,7 +96,7 @@ richieste esistenti, ma **la creazione e gli allegati non toccano il DB**.
 |--------|------|----------------------|
 | A1–A4 — lookup mancanti | 4 | **2,5 g** |
 | A5–A6 — autocomplete servizi esterni (LOTO/TOPE) | 2 | **4–6 g** (rischio esterno) |
-| A7–A13 — motore di ricerca avanzata (fase 3) | 7 endpoint | **8–15 g** |
+| A7–A13 — motore di ricerca avanzata | rimossi dal contratto | re-introduzione fase 3: **8–15 g** |
 | B1–B2 — layout/metadati da DB | 2 | **3–4 g** |
 | C1–C4 — persistenza creazione/invio/allegati | 4 aree | **7–12 g** |
 | **Totale** | | **≈ 25–40 giorni/uomo** |

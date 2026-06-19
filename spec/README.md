@@ -8,6 +8,7 @@ Analisi delle pagine legacy e proposta API REST per la migrazione verso `sprintb
 | [creazione-richiesta.md](./creazione-richiesta.md) | `nuovaRichiesta.do` + wizard folder 0–5 + allegati | Bozza |
 | [api-da-implementare.md](./api-da-implementare.md) | Gap analysis API non implementate + stima effort | Bozza |
 | [integrazione-loto-tope.md](./integrazione-loto-tope.md) | Integrazione esterni CSI: LOTO (comuni) + Toponomastica (indirizzi) | Bozza |
+| [motore-ricerca.md](./motore-ricerca.md) | Motore di ricerca avanzata — design conservato (rimosso dal contratto, fase 3) | Bozza |
 
 Ogni spec descrive:
 
